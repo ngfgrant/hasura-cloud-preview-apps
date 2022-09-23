@@ -14211,7 +14211,11 @@ const getBaseParameters = () => ({
     GITHUB_OWNER,
     GITHUB_BRANCH_NAME,
     HASURA_ENV_VARS: exports.getHasuraEnvVars(core.getInput('hasuraEnv')),
-    SHOULD_DELETE: [true, 'true'].includes(core.getInput('delete'))
+    SHOULD_DELETE: [true, 'true'].includes(core.getInput('delete')),
+    CA_FILE_PATH: core.getInput('caFilePath') || '',
+    KEY_FILE_PATH: core.getInput('keyFilePath') || '',
+    CERT_FILE_PATH: core.getInput('certFilePath') || '',
+    DB_PROXY_CONNECTION_STRING: core.getInput('dbProxyConnectionString') || ''
 });
 const validateParameters = (params) => {
     if (!params.NAME) {
@@ -14262,16 +14266,23 @@ const getParameters = (logger, parameters = getBaseParameters()) => __awaiter(vo
     if (pgDbEnvEntry)
         pgDbEnvEntry.value = postgres_1.changeDbInPgString(pgDbEnvEntry.value, parameters.NAME.replace(/[^A-Z0-9]/gi, '_'));
     if (postgresMetadata) {
+        let connectionString = postgresMetadata.pgString;
+        if (parameters.DB_PROXY_CONNECTION_STRING !== '') {
+            connectionString = parameters.DB_PROXY_CONNECTION_STRING;
+        }
+        const caFilePath = parameters.CA_FILE_PATH;
+        const keyFilePath = parameters.KEY_FILE_PATH;
+        const certFilePath = parameters.CERT_FILE_PATH;
         for (const env of postgresMetadata.envVars) {
             const dbName = parameters.NAME.replace(/[^A-Z0-9]/gi, '_');
             if (!parameters.SHOULD_DELETE) {
                 try {
-                    yield postgres_1.createEphemeralDb(postgresMetadata.pgString, dbName);
+                    yield postgres_1.createEphemeralDb(connectionString, dbName, caFilePath, keyFilePath, certFilePath);
                     parameters.HASURA_ENV_VARS = [
                         ...parameters.HASURA_ENV_VARS.filter(e => e.key !== env),
                         {
                             key: env,
-                            value: postgres_1.changeDbInPgString(postgresMetadata.pgString, dbName)
+                            value: postgres_1.changeDbInPgString(connectionString, dbName)
                         }
                     ];
                 }
@@ -14284,7 +14295,7 @@ const getParameters = (logger, parameters = getBaseParameters()) => __awaiter(vo
             }
             else {
                 try {
-                    yield postgres_1.dropEphemeralDb(postgresMetadata.pgString, dbName);
+                    yield postgres_1.dropEphemeralDb(connectionString, dbName, caFilePath, keyFilePath, certFilePath);
                 }
                 catch (e) {
                     if (e instanceof Error) {
@@ -14323,8 +14334,12 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.dropEphemeralDb = exports.createEphemeralDb = exports.changeDbInPgString = exports.stripSSLParameter = exports.dropDB = exports.dropAndCreateDb = exports.revokeExistingConnections = exports.getPGVersion = void 0;
+const fs_1 = __importDefault(__nccwpck_require__(7147));
 const pg_1 = __nccwpck_require__(4194);
 const getPGVersion = (pgClient) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -14418,12 +14433,18 @@ const changeDbInPgString = (baseString, dbName) => {
     return urlObj.toString();
 };
 exports.changeDbInPgString = changeDbInPgString;
-const createEphemeralDb = (connectionString, dbName) => __awaiter(void 0, void 0, void 0, function* () {
-    const connectionParams = connectionString.includes('sslmode=require')
+const createEphemeralDb = (connectionString, dbName, caFilePath, keyFilePath, certFilePath) => __awaiter(void 0, void 0, void 0, function* () {
+    const connectionParams = connectionString.includes('sslmode=require') ||
+        caFilePath !== '' ||
+        keyFilePath !== '' ||
+        certFilePath !== ''
         ? {
             connectionString: exports.stripSSLParameter(connectionString),
             ssl: {
-                rejectUnauthorized: false
+                rejectUnauthorized: false,
+                ca: fs_1.default.readFileSync(caFilePath).toString(),
+                cert: fs_1.default.readFileSync(certFilePath).toString(),
+                key: fs_1.default.readFileSync(keyFilePath).toString()
             }
         }
         : { connectionString };
@@ -14441,12 +14462,18 @@ const createEphemeralDb = (connectionString, dbName) => __awaiter(void 0, void 0
     }
 });
 exports.createEphemeralDb = createEphemeralDb;
-const dropEphemeralDb = (connectionString, dbName) => __awaiter(void 0, void 0, void 0, function* () {
-    const connectionParams = connectionString.includes('sslmode=require')
+const dropEphemeralDb = (connectionString, dbName, caFilePath, keyFilePath, certFilePath) => __awaiter(void 0, void 0, void 0, function* () {
+    const connectionParams = connectionString.includes('sslmode=require') ||
+        caFilePath !== '' ||
+        keyFilePath !== '' ||
+        certFilePath !== ''
         ? {
             connectionString: exports.stripSSLParameter(connectionString),
             ssl: {
-                rejectUnauthorized: false
+                rejectUnauthorized: false,
+                ca: fs_1.default.readFileSync(caFilePath).toString(),
+                cert: fs_1.default.readFileSync(certFilePath).toString(),
+                key: fs_1.default.readFileSync(keyFilePath).toString()
             }
         }
         : { connectionString };

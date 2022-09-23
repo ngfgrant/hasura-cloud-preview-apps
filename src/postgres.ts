@@ -1,3 +1,4 @@
+import fs from 'fs'
 import {Client} from 'pg'
 import {PGClient} from './types'
 
@@ -102,16 +103,26 @@ export const changeDbInPgString = (baseString: string, dbName: string) => {
 
 export const createEphemeralDb = async (
   connectionString: string,
-  dbName: string
+  dbName: string,
+  caFilePath: string,
+  keyFilePath: string,
+  certFilePath: string
 ) => {
-  const connectionParams = connectionString.includes('sslmode=require')
-    ? {
-        connectionString: stripSSLParameter(connectionString),
-        ssl: {
-          rejectUnauthorized: false
+  const connectionParams =
+    connectionString.includes('sslmode=require') ||
+    caFilePath !== '' ||
+    keyFilePath !== '' ||
+    certFilePath !== ''
+      ? {
+          connectionString: stripSSLParameter(connectionString),
+          ssl: {
+            rejectUnauthorized: false,
+            ca: fs.readFileSync(caFilePath).toString(),
+            cert: fs.readFileSync(certFilePath).toString(),
+            key: fs.readFileSync(keyFilePath).toString()
+          }
         }
-      }
-    : {connectionString}
+      : {connectionString}
 
   const pgVersionClient = new Client(connectionParams)
 
@@ -134,16 +145,26 @@ export const createEphemeralDb = async (
 
 export const dropEphemeralDb = async (
   connectionString: string,
-  dbName: string
+  dbName: string,
+  caFilePath: string,
+  keyFilePath: string,
+  certFilePath: string
 ) => {
-  const connectionParams = connectionString.includes('sslmode=require')
-    ? {
-        connectionString: stripSSLParameter(connectionString),
-        ssl: {
-          rejectUnauthorized: false
+  const connectionParams =
+    connectionString.includes('sslmode=require') ||
+    caFilePath !== '' ||
+    keyFilePath !== '' ||
+    certFilePath !== ''
+      ? {
+          connectionString: stripSSLParameter(connectionString),
+          ssl: {
+            rejectUnauthorized: false,
+            ca: fs.readFileSync(caFilePath).toString(),
+            cert: fs.readFileSync(certFilePath).toString(),
+            key: fs.readFileSync(keyFilePath).toString()
+          }
         }
-      }
-    : {connectionString}
+      : {connectionString}
   const pgVersionClient = new Client(connectionParams)
 
   const revokeExistingConnectionsPgClient = new Client(connectionParams)

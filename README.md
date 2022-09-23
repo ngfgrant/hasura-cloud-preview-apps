@@ -35,6 +35,9 @@ jobs:
           postgresDBConfig: |
             POSTGRES_SERVER_CONNECTION_URI=${{secrets.PG_STRING}}
             PG_ENV_VARS_FOR_HASURA=PG_DB_URL_1,PG_DB_URL_2
+          caFilePath: "./client-key.pem"
+          certFilePath: "./client-cert.pem"
+          keyFilePath: "./server-ca.pem"
         env:
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}} # ${{ secrets.GITHUB_TOKEN }} is provided by default by GitHub actions
           HASURA_CLOUD_ACCESS_TOKEN: ${{secrets.HASURA_CLOUD_ACCESS_TOKEN}} # Hasura Cloud access token to contact Hasura Cloud APIs
@@ -98,6 +101,38 @@ jobs:
 
   **Using Postgres in SSL mode**: To connect to Postgres in SSL mode, add the query parameter `sslmode=require` to your connection URI. Eg: `postgres://postgres:postgres@pgserver:25060/defaultdb?sslmode=require`
 
+You can also specify the paths to your client certificate, client key and server certificate authority. You should store these as secrets in GitHub Secrets and write them to a file in the running action. Remember to remove these.
+
+```
+      - run: 'echo "$SSH_KEY" > client-cert.pem'
+        shell: bash
+        env:
+          SSH_KEY: ${{secrets.SSL_CLIENT_CERT}}
+      - run: 'echo "$SSH_KEY" > client-key.pem'
+        shell: bash
+        env:
+          SSH_KEY: ${{secrets.SSL_CLIENT_KEY}}
+      - run: 'echo "$SSH_KEY" > server-ca.pem'
+        shell: bash
+        env:
+          SSH_KEY: ${{secrets.SSL_SERVER_CA}}
+      - run: chmod 600 client-cert.pem client-key.pem server-ca.pem
+... 
+# Run the hasura preview environment here.
+...
+      - run: rm -f client-cert.pem client-key.pem server-ca.pem
+```
+
+You can then reference these as inputs to the Action.
+
+```yaml
+      - uses: hasura/hasura-cloud-preview-apps@v0.1.7
+        with:
+          ...
+          caFilePath: "./client-key.pem"
+          certFilePath: "./client-cert.pem"
+          keyFilePath: "./server-ca.pem"
+```
 
 ## Env Vars
 
