@@ -55,7 +55,11 @@ const getBaseParameters = () => ({
   GITHUB_OWNER,
   GITHUB_BRANCH_NAME,
   HASURA_ENV_VARS: getHasuraEnvVars(core.getInput('hasuraEnv')),
-  SHOULD_DELETE: [true, 'true'].includes(core.getInput('delete'))
+  SHOULD_DELETE: [true, 'true'].includes(core.getInput('delete')),
+  CA_FILE_PATH: core.getInput('caFilePath') || '',
+  KEY_FILE_PATH: core.getInput('keyFilePath') || '',
+  CERT_FILE_PATH: core.getInput('certFilePath') || '',
+  DB_PROXY_CONNECTION_STRING: core.getInput('dbProxyConnectionString') || ''
 })
 
 export const validateParameters = (params: Parameters): void => {
@@ -133,16 +137,30 @@ export const getParameters = async (
     )
 
   if (postgresMetadata) {
+    let connectionString = postgresMetadata.pgString
+    if (parameters.DB_PROXY_CONNECTION_STRING !== '') {
+      connectionString = parameters.DB_PROXY_CONNECTION_STRING
+    }
+    const caFilePath = parameters.CA_FILE_PATH
+    const keyFilePath = parameters.KEY_FILE_PATH
+    const certFilePath = parameters.CERT_FILE_PATH
+
     for (const env of postgresMetadata.envVars) {
       const dbName = parameters.NAME.replace(/[^A-Z0-9]/gi, '_')
       if (!parameters.SHOULD_DELETE) {
         try {
-          await createEphemeralDb(postgresMetadata.pgString, dbName)
+          await createEphemeralDb(
+            connectionString,
+            dbName,
+            caFilePath,
+            keyFilePath,
+            certFilePath
+          )
           parameters.HASURA_ENV_VARS = [
             ...parameters.HASURA_ENV_VARS.filter(e => e.key !== env),
             {
               key: env,
-              value: changeDbInPgString(postgresMetadata.pgString, dbName)
+              value: changeDbInPgString(connectionString, dbName)
             }
           ]
         } catch (e) {
@@ -155,7 +173,13 @@ export const getParameters = async (
         }
       } else {
         try {
-          await dropEphemeralDb(postgresMetadata.pgString, dbName)
+          await dropEphemeralDb(
+            connectionString,
+            dbName,
+            caFilePath,
+            keyFilePath,
+            certFilePath
+          )
         } catch (e) {
           if (e instanceof Error) {
             throw new Error(
