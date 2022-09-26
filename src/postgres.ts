@@ -95,7 +95,10 @@ export const stripSSLParameter = baseString => {
   return urlObj.toString()
 }
 
-export const changeDbInPgString = (baseString: string, dbName: string) => {
+export const replaceDbNameInConnectionString = (
+  baseString: string,
+  dbName: string
+) => {
   const urlObj = new URL(baseString)
   urlObj.pathname = dbName
   return urlObj.toString()

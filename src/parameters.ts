@@ -3,7 +3,7 @@ import {errors} from './errors'
 import {Logger} from './logger'
 import {
   createEphemeralDb,
-  changeDbInPgString,
+  replaceDbNameInConnectionString,
   dropEphemeralDb
 } from './postgres'
 
@@ -131,7 +131,7 @@ export const getParameters = async (
     e => e.key === 'PG_DATABASE_URL'
   )
   if (pgDbEnvEntry)
-    pgDbEnvEntry.value = changeDbInPgString(
+    pgDbEnvEntry.value = replaceDbNameInConnectionString(
       pgDbEnvEntry.value,
       parameters.NAME.replace(/[^A-Z0-9]/gi, '_')
     )
@@ -160,7 +160,7 @@ export const getParameters = async (
             ...parameters.HASURA_ENV_VARS.filter(e => e.key !== env),
             {
               key: env,
-              value: changeDbInPgString(connectionString, dbName)
+              value: replaceDbNameInConnectionString(connectionString, dbName)
             }
           ]
         } catch (e) {
