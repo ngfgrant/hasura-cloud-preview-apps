@@ -146,7 +146,7 @@ export const createDatabase = async (
   }
 }
 
-export const dropEphemeralDb = async (
+export const dropDatabase = async (
   connectionString: string,
   dbName: string,
   caFilePath: string,
