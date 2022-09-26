@@ -129,12 +129,12 @@ export const getParameters = async (
   if (pgDbEnvEntry)
     pgDbEnvEntry.value = replaceDbNameInConnectionString(
       pgDbEnvEntry.value,
-      parameters.NAME.replace(/[^A-Z0-9]/gi, '_')
+      parseSqlCompliantDbName(parameters.NAME)
     )
 
   if (postgresMetadata) {
     for (const env of postgresMetadata.envVars) {
-      const dbName = parameters.NAME.replace(/[^A-Z0-9]/gi, '_')
+      const dbName = parseSqlCompliantDbName(parameters.NAME)
       if (!parameters.SHOULD_DELETE) {
         try {
           await createDatabase(postgresMetadata.pgString, dbName)
@@ -191,6 +191,10 @@ export const getParameters = async (
   )
 
   return parameters
+}
+
+function parseSqlCompliantDbName(name: string) {
+  return name.replace(/[^A-Z0-9]/gi, '_')
 }
 
 export type Parameters = ReturnType<typeof getBaseParameters>
