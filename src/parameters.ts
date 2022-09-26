@@ -2,9 +2,9 @@ import * as core from '@actions/core'
 import {errors} from './errors'
 import {Logger} from './logger'
 import {
-  createEphemeralDb,
+  createDatabase,
   replaceDbNameInConnectionString,
-  dropEphemeralDb
+  dropDatabase
 } from './postgres'
 
 const GITHUB_REPOSITORY = process.env.GITHUB_REPOSITORY || ''
@@ -137,7 +137,7 @@ export const getParameters = async (
       const dbName = parameters.NAME.replace(/[^A-Z0-9]/gi, '_')
       if (!parameters.SHOULD_DELETE) {
         try {
-          await createEphemeralDb(postgresMetadata.pgString, dbName)
+          await createDatabase(postgresMetadata.pgString, dbName)
           parameters.HASURA_ENV_VARS = [
             ...parameters.HASURA_ENV_VARS.filter(e => e.key !== env),
             {
@@ -158,7 +158,7 @@ export const getParameters = async (
         }
       } else {
         try {
-          await dropEphemeralDb(postgresMetadata.pgString, dbName)
+          await dropDatabase(postgresMetadata.pgString, dbName)
         } catch (e) {
           if (e instanceof Error) {
             throw new Error(

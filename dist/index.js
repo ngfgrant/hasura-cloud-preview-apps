@@ -14266,7 +14266,7 @@ const getParameters = (logger, parameters = getBaseParameters()) => __awaiter(vo
             const dbName = parameters.NAME.replace(/[^A-Z0-9]/gi, '_');
             if (!parameters.SHOULD_DELETE) {
                 try {
-                    yield postgres_1.createEphemeralDb(postgresMetadata.pgString, dbName);
+                    yield postgres_1.createDatabase(postgresMetadata.pgString, dbName);
                     parameters.HASURA_ENV_VARS = [
                         ...parameters.HASURA_ENV_VARS.filter(e => e.key !== env),
                         {
@@ -14284,7 +14284,7 @@ const getParameters = (logger, parameters = getBaseParameters()) => __awaiter(vo
             }
             else {
                 try {
-                    yield postgres_1.dropEphemeralDb(postgresMetadata.pgString, dbName);
+                    yield postgres_1.dropDatabase(postgresMetadata.pgString, dbName);
                 }
                 catch (e) {
                     if (e instanceof Error) {
@@ -14324,7 +14324,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.dropEphemeralDb = exports.createEphemeralDb = exports.replaceDbNameInConnectionString = exports.stripSSLParameter = exports.dropDB = exports.dropAndCreateDb = exports.revokeExistingConnections = exports.getPGVersion = void 0;
+exports.dropDatabase = exports.createDatabase = exports.replaceDbNameInConnectionString = exports.stripSSLParameter = exports.dropDB = exports.dropAndCreateDb = exports.revokeExistingConnections = exports.getPGVersion = void 0;
 const pg_1 = __nccwpck_require__(4194);
 const getPGVersion = (pgClient) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -14418,7 +14418,7 @@ const replaceDbNameInConnectionString = (baseString, dbName) => {
     return urlObj.toString();
 };
 exports.replaceDbNameInConnectionString = replaceDbNameInConnectionString;
-const createEphemeralDb = (connectionString, dbName) => __awaiter(void 0, void 0, void 0, function* () {
+const createDatabase = (connectionString, dbName) => __awaiter(void 0, void 0, void 0, function* () {
     const connectionParams = connectionString.includes('sslmode=require')
         ? {
             connectionString: exports.stripSSLParameter(connectionString),
@@ -14438,8 +14438,8 @@ const createEphemeralDb = (connectionString, dbName) => __awaiter(void 0, void 0
         throw e;
     }
 });
-exports.createEphemeralDb = createEphemeralDb;
-const dropEphemeralDb = (connectionString, dbName) => __awaiter(void 0, void 0, void 0, function* () {
+exports.createDatabase = createDatabase;
+const dropDatabase = (connectionString, dbName) => __awaiter(void 0, void 0, void 0, function* () {
     const connectionParams = connectionString.includes('sslmode=require')
         ? {
             connectionString: exports.stripSSLParameter(connectionString),
@@ -14459,7 +14459,7 @@ const dropEphemeralDb = (connectionString, dbName) => __awaiter(void 0, void 0, 
         throw e;
     }
 });
-exports.dropEphemeralDb = dropEphemeralDb;
+exports.dropDatabase = dropDatabase;
 function revokeAndReset(pgVersionClient, dbName, revokeExistingConnectionsPgClient, dropDBPgClient) {
     return __awaiter(this, void 0, void 0, function* () {
         const pgVersionString = yield exports.getPGVersion(pgVersionClient);

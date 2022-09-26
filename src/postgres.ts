@@ -103,7 +103,7 @@ export const replaceDbNameInConnectionString = (
   return urlObj.toString()
 }
 
-export const createEphemeralDb = async (
+export const createDatabase = async (
   connectionString: string,
   dbName: string
 ) => {
@@ -135,7 +135,7 @@ export const createEphemeralDb = async (
   }
 }
 
-export const dropEphemeralDb = async (
+export const dropDatabase = async (
   connectionString: string,
   dbName: string
 ) => {
