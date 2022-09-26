@@ -14260,40 +14260,31 @@ const getPostgresServerMetadata = (rawMetadata) => {
     };
 };
 const getParameters = (logger, parameters = getBaseParameters()) => __awaiter(void 0, void 0, void 0, function* () {
+    // Validate that required parameters are present
+    try {
+        exports.validateParameters(parameters);
+    }
+    catch (e) {
+        throw e;
+    }
+    logger.debug(`Received parameters:\n${JSON.stringify(Object.assign(Object.assign({}, parameters), { HASURA_ENV_VARS: '***', HASURA_CLOUD_PAT: '***', GITHUB_TOKEN: '***' }), null, 4)}`);
     const postgresMetadata = getPostgresServerMetadata(core.getInput('postgresDBConfig'));
     // change db name for key 'PG_DATABASE_URL'
     const pgDbEnvEntry = parameters.HASURA_ENV_VARS.find(e => e.key === 'PG_DATABASE_URL');
     if (pgDbEnvEntry)
         pgDbEnvEntry.value = postgres_1.replaceDbNameInConnectionString(pgDbEnvEntry.value, parseSqlCompliantDbName(parameters.NAME));
+    const caFilePath = parameters.CA_FILE_PATH;
+    const keyFilePath = parameters.KEY_FILE_PATH;
+    const certFilePath = parameters.CERT_FILE_PATH;
+    const dbName = parseSqlCompliantDbName(parameters.NAME);
     if (postgresMetadata) {
         let connectionString = postgresMetadata.pgString;
         if (parameters.DB_PROXY_CONNECTION_STRING !== '') {
             connectionString = parameters.DB_PROXY_CONNECTION_STRING;
         }
-        const caFilePath = parameters.CA_FILE_PATH;
-        const keyFilePath = parameters.KEY_FILE_PATH;
-        const certFilePath = parameters.CERT_FILE_PATH;
-        for (const env of postgresMetadata.envVars) {
-            const dbName = parseSqlCompliantDbName(parameters.NAME);
-            if (!parameters.SHOULD_DELETE) {
-                try {
-                    yield postgres_1.createDatabase(connectionString, dbName, caFilePath, keyFilePath, certFilePath);
-                    parameters.HASURA_ENV_VARS = [
-                        ...parameters.HASURA_ENV_VARS.filter(e => e.key !== env),
-                        {
-                            key: env,
-                            value: postgres_1.replaceDbNameInConnectionString(connectionString, dbName)
-                        }
-                    ];
-                }
-                catch (e) {
-                    if (e instanceof Error) {
-                        throw new Error(`Could not create ephemeral database(s). ${e.message}`);
-                    }
-                    throw e;
-                }
-            }
-            else {
+        if (parameters.SHOULD_DELETE) {
+            for (const env of postgresMetadata.envVars) {
+                console.log(`Deleting env: ${env}`);
                 try {
                     yield postgres_1.dropDatabase(connectionString, dbName, caFilePath, keyFilePath, certFilePath);
                 }
@@ -14304,15 +14295,29 @@ const getParameters = (logger, parameters = getBaseParameters()) => __awaiter(vo
                     throw e;
                 }
             }
+            return parameters;
+        }
+        // Create a database for every url specified in postgresDBConfig.PG_ENV_VARS_FOR_HASURA
+        for (const env of postgresMetadata.envVars) {
+            try {
+                yield postgres_1.createDatabase(connectionString, dbName, caFilePath, keyFilePath, certFilePath);
+                // Mutate the HASURA_ENV_VARS for the new DB
+                parameters.HASURA_ENV_VARS = [
+                    ...parameters.HASURA_ENV_VARS.filter(e => e.key !== env),
+                    {
+                        key: env,
+                        value: postgres_1.replaceDbNameInConnectionString(connectionString, dbName)
+                    }
+                ];
+            }
+            catch (e) {
+                if (e instanceof Error) {
+                    throw new Error(`Could not create ephemeral database(s). ${e.message}`);
+                }
+                throw e;
+            }
         }
     }
-    try {
-        exports.validateParameters(parameters);
-    }
-    catch (e) {
-        throw e;
-    }
-    logger.debug(`Received parameters:\n${JSON.stringify(Object.assign(Object.assign({}, parameters), { HASURA_ENV_VARS: '***', HASURA_CLOUD_PAT: '***', GITHUB_TOKEN: '***' }), null, 4)}`);
     return parameters;
 });
 exports.getParameters = getParameters;

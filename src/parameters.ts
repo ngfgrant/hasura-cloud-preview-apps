@@ -122,76 +122,7 @@ export const getParameters = async (
   logger: Logger,
   parameters = getBaseParameters()
 ) => {
-  const postgresMetadata = getPostgresServerMetadata(
-    core.getInput('postgresDBConfig')
-  )
-
-  // change db name for key 'PG_DATABASE_URL'
-  const pgDbEnvEntry = parameters.HASURA_ENV_VARS.find(
-    e => e.key === 'PG_DATABASE_URL'
-  )
-  if (pgDbEnvEntry)
-    pgDbEnvEntry.value = replaceDbNameInConnectionString(
-      pgDbEnvEntry.value,
-      parseSqlCompliantDbName(parameters.NAME)
-    )
-
-  if (postgresMetadata) {
-    let connectionString = postgresMetadata.pgString
-    if (parameters.DB_PROXY_CONNECTION_STRING !== '') {
-      connectionString = parameters.DB_PROXY_CONNECTION_STRING
-    }
-    const caFilePath = parameters.CA_FILE_PATH
-    const keyFilePath = parameters.KEY_FILE_PATH
-    const certFilePath = parameters.CERT_FILE_PATH
-
-    for (const env of postgresMetadata.envVars) {
-      const dbName = parseSqlCompliantDbName(parameters.NAME)
-      if (!parameters.SHOULD_DELETE) {
-        try {
-          await createDatabase(
-            connectionString,
-            dbName,
-            caFilePath,
-            keyFilePath,
-            certFilePath
-          )
-          parameters.HASURA_ENV_VARS = [
-            ...parameters.HASURA_ENV_VARS.filter(e => e.key !== env),
-            {
-              key: env,
-              value: replaceDbNameInConnectionString(connectionString, dbName)
-            }
-          ]
-        } catch (e) {
-          if (e instanceof Error) {
-            throw new Error(
-              `Could not create ephemeral database(s). ${e.message}`
-            )
-          }
-          throw e
-        }
-      } else {
-        try {
-          await dropDatabase(
-            connectionString,
-            dbName,
-            caFilePath,
-            keyFilePath,
-            certFilePath
-          )
-        } catch (e) {
-          if (e instanceof Error) {
-            throw new Error(
-              `Could not delete ephemeral database(s). ${e.message}`
-            )
-          }
-          throw e
-        }
-      }
-    }
-  }
-
+  // Validate that required parameters are present
   try {
     validateParameters(parameters)
   } catch (e) {
@@ -210,6 +141,83 @@ export const getParameters = async (
       4
     )}`
   )
+
+  const postgresMetadata = getPostgresServerMetadata(
+    core.getInput('postgresDBConfig')
+  )
+
+  // change db name for key 'PG_DATABASE_URL'
+  const pgDbEnvEntry = parameters.HASURA_ENV_VARS.find(
+    e => e.key === 'PG_DATABASE_URL'
+  )
+  if (pgDbEnvEntry)
+    pgDbEnvEntry.value = replaceDbNameInConnectionString(
+      pgDbEnvEntry.value,
+      parseSqlCompliantDbName(parameters.NAME)
+    )
+
+  const caFilePath = parameters.CA_FILE_PATH
+  const keyFilePath = parameters.KEY_FILE_PATH
+  const certFilePath = parameters.CERT_FILE_PATH
+  const dbName = parseSqlCompliantDbName(parameters.NAME)
+
+  if (postgresMetadata) {
+    let connectionString = postgresMetadata.pgString
+    if (parameters.DB_PROXY_CONNECTION_STRING !== '') {
+      connectionString = parameters.DB_PROXY_CONNECTION_STRING
+    }
+    if (parameters.SHOULD_DELETE) {
+      for (const env of postgresMetadata.envVars) {
+        console.log(`Deleting env: ${env}`)
+        try {
+          await dropDatabase(
+            connectionString,
+            dbName,
+            caFilePath,
+            keyFilePath,
+            certFilePath
+          )
+        } catch (e) {
+          if (e instanceof Error) {
+            throw new Error(
+              `Could not delete ephemeral database(s). ${e.message}`
+            )
+          }
+          throw e
+        }
+      }
+      return parameters
+    }
+
+    // Create a database for every url specified in postgresDBConfig.PG_ENV_VARS_FOR_HASURA
+    for (const env of postgresMetadata.envVars) {
+      try {
+        await createDatabase(
+          connectionString,
+          dbName,
+          caFilePath,
+          keyFilePath,
+          certFilePath
+        )
+
+        // Mutate the HASURA_ENV_VARS for the new DB
+        parameters.HASURA_ENV_VARS = [
+          ...parameters.HASURA_ENV_VARS.filter(e => e.key !== env),
+          {
+            key: env,
+            value: replaceDbNameInConnectionString(connectionString, dbName)
+          }
+        ]
+      } catch (e) {
+        if (e instanceof Error) {
+          throw new Error(
+            `Could not create ephemeral database(s). ${e.message}`
+          )
+        }
+        throw e
+      }
+    }
+  }
 
   return parameters
 }
