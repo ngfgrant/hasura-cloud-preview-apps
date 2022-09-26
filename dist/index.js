@@ -14277,7 +14277,7 @@ const getParameters = (logger, parameters = getBaseParameters()) => __awaiter(vo
             const dbName = parameters.NAME.replace(/[^A-Z0-9]/gi, '_');
             if (!parameters.SHOULD_DELETE) {
                 try {
-                    yield postgres_1.createEphemeralDb(connectionString, dbName, caFilePath, keyFilePath, certFilePath);
+                    yield postgres_1.createDatabase(connectionString, dbName, caFilePath, keyFilePath, certFilePath);
                     parameters.HASURA_ENV_VARS = [
                         ...parameters.HASURA_ENV_VARS.filter(e => e.key !== env),
                         {
@@ -14338,7 +14338,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.dropEphemeralDb = exports.createEphemeralDb = exports.replaceDbNameInConnectionString = exports.stripSSLParameter = exports.dropDB = exports.dropAndCreateDb = exports.revokeExistingConnections = exports.getPGVersion = void 0;
+exports.dropEphemeralDb = exports.createDatabase = exports.replaceDbNameInConnectionString = exports.stripSSLParameter = exports.dropDB = exports.dropAndCreateDb = exports.revokeExistingConnections = exports.getPGVersion = void 0;
 const fs_1 = __importDefault(__nccwpck_require__(7147));
 const pg_1 = __nccwpck_require__(4194);
 const getPGVersion = (pgClient) => __awaiter(void 0, void 0, void 0, function* () {
@@ -14433,7 +14433,7 @@ const replaceDbNameInConnectionString = (baseString, dbName) => {
     return urlObj.toString();
 };
 exports.replaceDbNameInConnectionString = replaceDbNameInConnectionString;
-const createEphemeralDb = (connectionString, dbName, caFilePath, keyFilePath, certFilePath) => __awaiter(void 0, void 0, void 0, function* () {
+const createDatabase = (connectionString, dbName, caFilePath, keyFilePath, certFilePath) => __awaiter(void 0, void 0, void 0, function* () {
     const connectionParams = connectionString.includes('sslmode=require') ||
         caFilePath !== '' ||
         keyFilePath !== '' ||
@@ -14459,7 +14459,7 @@ const createEphemeralDb = (connectionString, dbName, caFilePath, keyFilePath, ce
         throw e;
     }
 });
-exports.createEphemeralDb = createEphemeralDb;
+exports.createDatabase = createDatabase;
 const dropEphemeralDb = (connectionString, dbName, caFilePath, keyFilePath, certFilePath) => __awaiter(void 0, void 0, void 0, function* () {
     const connectionParams = connectionString.includes('sslmode=require') ||
         caFilePath !== '' ||
