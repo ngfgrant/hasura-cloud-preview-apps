@@ -104,7 +104,7 @@ export const replaceDbNameInConnectionString = (
   return urlObj.toString()
 }
 
-export const createEphemeralDb = async (
+export const createDatabase = async (
   connectionString: string,
   dbName: string,
   caFilePath: string,

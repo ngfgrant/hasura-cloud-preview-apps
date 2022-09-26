@@ -2,7 +2,7 @@ import * as core from '@actions/core'
 import {errors} from './errors'
 import {Logger} from './logger'
 import {
-  createEphemeralDb,
+  createDatabase,
   replaceDbNameInConnectionString,
   dropEphemeralDb
 } from './postgres'
@@ -149,7 +149,7 @@ export const getParameters = async (
       const dbName = parameters.NAME.replace(/[^A-Z0-9]/gi, '_')
       if (!parameters.SHOULD_DELETE) {
         try {
-          await createEphemeralDb(
+          await createDatabase(
             connectionString,
             dbName,
             caFilePath,
