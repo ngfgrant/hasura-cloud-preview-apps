@@ -14295,7 +14295,7 @@ const getParameters = (logger, parameters = getBaseParameters()) => __awaiter(vo
             }
             else {
                 try {
-                    yield postgres_1.dropEphemeralDb(connectionString, dbName, caFilePath, keyFilePath, certFilePath);
+                    yield postgres_1.dropDatabase(connectionString, dbName, caFilePath, keyFilePath, certFilePath);
                 }
                 catch (e) {
                     if (e instanceof Error) {
@@ -14338,7 +14338,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.dropEphemeralDb = exports.createDatabase = exports.replaceDbNameInConnectionString = exports.stripSSLParameter = exports.dropDB = exports.dropAndCreateDb = exports.revokeExistingConnections = exports.getPGVersion = void 0;
+exports.dropDatabase = exports.createDatabase = exports.replaceDbNameInConnectionString = exports.stripSSLParameter = exports.dropDB = exports.dropAndCreateDb = exports.revokeExistingConnections = exports.getPGVersion = void 0;
 const fs_1 = __importDefault(__nccwpck_require__(7147));
 const pg_1 = __nccwpck_require__(4194);
 const getPGVersion = (pgClient) => __awaiter(void 0, void 0, void 0, function* () {
@@ -14460,7 +14460,7 @@ const createDatabase = (connectionString, dbName, caFilePath, keyFilePath, certF
     }
 });
 exports.createDatabase = createDatabase;
-const dropEphemeralDb = (connectionString, dbName, caFilePath, keyFilePath, certFilePath) => __awaiter(void 0, void 0, void 0, function* () {
+const dropDatabase = (connectionString, dbName, caFilePath, keyFilePath, certFilePath) => __awaiter(void 0, void 0, void 0, function* () {
     const connectionParams = connectionString.includes('sslmode=require') ||
         caFilePath !== '' ||
         keyFilePath !== '' ||
@@ -14486,7 +14486,7 @@ const dropEphemeralDb = (connectionString, dbName, caFilePath, keyFilePath, cert
         throw e;
     }
 });
-exports.dropEphemeralDb = dropEphemeralDb;
+exports.dropDatabase = dropDatabase;
 function revokeAndReset(pgVersionClient, dbName, revokeExistingConnectionsPgClient, dropDBPgClient) {
     return __awaiter(this, void 0, void 0, function* () {
         const pgVersionString = yield exports.getPGVersion(pgVersionClient);

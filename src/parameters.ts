@@ -4,7 +4,7 @@ import {Logger} from './logger'
 import {
   createDatabase,
   replaceDbNameInConnectionString,
-  dropEphemeralDb
+  dropDatabase
 } from './postgres'
 
 const GITHUB_REPOSITORY = process.env.GITHUB_REPOSITORY || ''
@@ -173,7 +173,7 @@ export const getParameters = async (
         }
       } else {
         try {
-          await dropEphemeralDb(
+          await dropDatabase(
             connectionString,
             dbName,
             caFilePath,
