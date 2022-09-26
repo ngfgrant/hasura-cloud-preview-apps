@@ -13952,6 +13952,7 @@ const createContext = () => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const logger = logger_1.createLogger();
         const parameters = yield parameters_1.getParameters(logger);
+        logger.debug(`context parameters: ${parameters}`);
         const client = client_1.createGqlClient(parameters, logger);
         return {
             logger,

@@ -12,6 +12,7 @@ export const createContext = async (): Promise<Context> => {
   try {
     const logger = createLogger()
     const parameters = await getParameters(logger)
+    logger.debug(`context parameters: ${parameters}`)
     const client = createGqlClient(parameters, logger)
     return {
       logger,
