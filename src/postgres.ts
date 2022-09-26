@@ -121,15 +121,12 @@ export const createEphemeralDb = async (
   const pgClient = new Client(connectionParams)
 
   try {
-    const pgVersionString = await getPGVersion(pgVersionClient)
-
-    await revokeExistingConnections(
+    revokeAndReset(
+      pgVersionClient,
       dbName,
       revokeExistingConnectionsPgClient,
-      pgVersionString
+      pgClient
     )
-
-    await dropAndCreateDb(dbName, pgClient)
   } catch (e) {
     throw e
   }
@@ -154,16 +151,30 @@ export const dropEphemeralDb = async (
 
   const dropDBPgClient = new Client(connectionParams)
   try {
-    const pgVersionString = await getPGVersion(pgVersionClient)
-
-    await revokeExistingConnections(
+    revokeAndReset(
+      pgVersionClient,
       dbName,
       revokeExistingConnectionsPgClient,
-      pgVersionString
+      dropDBPgClient
     )
-
-    await dropDB(dbName, dropDBPgClient)
   } catch (e) {
     throw e
   }
+}
+
+async function revokeAndReset(
+  pgVersionClient,
+  dbName,
+  revokeExistingConnectionsPgClient,
+  dropDBPgClient
+) {
+  const pgVersionString = await getPGVersion(pgVersionClient)
+
+  await revokeExistingConnections(
+    dbName,
+    revokeExistingConnectionsPgClient,
+    pgVersionString
+  )
+
+  await dropDB(dbName, dropDBPgClient)
 }
