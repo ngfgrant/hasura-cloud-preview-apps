@@ -21,7 +21,10 @@ const paramsBase: Parameters = {
   CA_FILE_PATH: '',
   KEY_FILE_PATH: '',
   CERT_FILE_PATH: '',
-  DB_PROXY_CONNECTION_STRING: ''
+  DB_PROXY_CONNECTION_STRING: '',
+  DB_HOST: '',
+  DB_USER: '',
+  DB_PORT: ''
 }
 
 test('parameters validation', () => {

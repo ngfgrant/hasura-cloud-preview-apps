@@ -107,6 +107,9 @@ export const replaceDbNameInConnectionString = (
 export const createDatabase = async (
   connectionString: string,
   dbName: string,
+  host: string,
+  user: string,
+  port: string,
   caFilePath: string,
   keyFilePath: string,
   certFilePath: string
@@ -117,7 +120,6 @@ export const createDatabase = async (
     keyFilePath !== '' ||
     certFilePath !== ''
       ? {
-          connectionString: stripSSLParameter(connectionString),
           ssl: {
             rejectUnauthorized: false,
             ca: fs.readFileSync(caFilePath).toString(),
@@ -149,6 +151,9 @@ export const createDatabase = async (
 export const dropDatabase = async (
   connectionString: string,
   dbName: string,
+  host: string,
+  user: string,
+  port: string,
   caFilePath: string,
   keyFilePath: string,
   certFilePath: string
@@ -159,7 +164,10 @@ export const dropDatabase = async (
     keyFilePath !== '' ||
     certFilePath !== ''
       ? {
-          connectionString: stripSSLParameter(connectionString),
+          user,
+          database: dbName,
+          host,
+          port,
           ssl: {
             rejectUnauthorized: false,
             ca: fs.readFileSync(caFilePath).toString(),

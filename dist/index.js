@@ -14216,7 +14216,10 @@ const getBaseParameters = () => ({
     CA_FILE_PATH: core.getInput('caFilePath') || '',
     KEY_FILE_PATH: core.getInput('keyFilePath') || '',
     CERT_FILE_PATH: core.getInput('certFilePath') || '',
-    DB_PROXY_CONNECTION_STRING: core.getInput('dbProxyConnectionString') || ''
+    DB_PROXY_CONNECTION_STRING: core.getInput('dbProxyConnectionString') || '',
+    DB_HOST: core.getInput('dbHost') || '',
+    DB_PORT: core.getInput('dbPort') || '',
+    DB_USER: core.getInput('dbUser') || ''
 });
 const validateParameters = (params) => {
     if (!params.NAME) {
@@ -14278,7 +14281,7 @@ const getParameters = (logger, parameters = getBaseParameters()) => __awaiter(vo
             const dbName = parseSqlCompliantDbName(parameters.NAME);
             if (!parameters.SHOULD_DELETE) {
                 try {
-                    yield postgres_1.createDatabase(connectionString, dbName, caFilePath, keyFilePath, certFilePath);
+                    yield postgres_1.createDatabase(connectionString, dbName, parameters.DB_HOST, parameters.DB_USER, parameters.DB_PORT, caFilePath, keyFilePath, certFilePath);
                     parameters.HASURA_ENV_VARS = [
                         ...parameters.HASURA_ENV_VARS.filter(e => e.key !== env),
                         {
@@ -14296,7 +14299,7 @@ const getParameters = (logger, parameters = getBaseParameters()) => __awaiter(vo
             }
             else {
                 try {
-                    yield postgres_1.dropDatabase(connectionString, dbName, caFilePath, keyFilePath, certFilePath);
+                    yield postgres_1.dropDatabase(connectionString, dbName, parameters.DB_HOST, parameters.DB_USER, parameters.DB_PORT, caFilePath, keyFilePath, certFilePath);
                 }
                 catch (e) {
                     if (e instanceof Error) {
@@ -14437,13 +14440,12 @@ const replaceDbNameInConnectionString = (baseString, dbName) => {
     return urlObj.toString();
 };
 exports.replaceDbNameInConnectionString = replaceDbNameInConnectionString;
-const createDatabase = (connectionString, dbName, caFilePath, keyFilePath, certFilePath) => __awaiter(void 0, void 0, void 0, function* () {
+const createDatabase = (connectionString, dbName, host, user, port, caFilePath, keyFilePath, certFilePath) => __awaiter(void 0, void 0, void 0, function* () {
     const connectionParams = connectionString.includes('sslmode=require') ||
         caFilePath !== '' ||
         keyFilePath !== '' ||
         certFilePath !== ''
         ? {
-            connectionString: exports.stripSSLParameter(connectionString),
             ssl: {
                 rejectUnauthorized: false,
                 ca: fs_1.default.readFileSync(caFilePath).toString(),
@@ -14464,13 +14466,16 @@ const createDatabase = (connectionString, dbName, caFilePath, keyFilePath, certF
     }
 });
 exports.createDatabase = createDatabase;
-const dropDatabase = (connectionString, dbName, caFilePath, keyFilePath, certFilePath) => __awaiter(void 0, void 0, void 0, function* () {
+const dropDatabase = (connectionString, dbName, host, user, port, caFilePath, keyFilePath, certFilePath) => __awaiter(void 0, void 0, void 0, function* () {
     const connectionParams = connectionString.includes('sslmode=require') ||
         caFilePath !== '' ||
         keyFilePath !== '' ||
         certFilePath !== ''
         ? {
-            connectionString: exports.stripSSLParameter(connectionString),
+            user,
+            database: dbName,
+            host,
+            port,
             ssl: {
                 rejectUnauthorized: false,
                 ca: fs_1.default.readFileSync(caFilePath).toString(),

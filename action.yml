@@ -46,6 +46,18 @@ inputs:
     description: 'If using a proxy to initially connect to the db that is not the same as the final production connection string'
     required: false
     default: ''
+  dbHost:
+    description: ''
+    required: false
+    default: ''
+  dbPort:
+    description: ''
+    required: false
+    default: ''
+  dbUser:
+    description: ''
+    required: false
+    default: ''
 
 outputs:
   graphQLEndpoint:

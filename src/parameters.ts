@@ -59,7 +59,10 @@ const getBaseParameters = () => ({
   CA_FILE_PATH: core.getInput('caFilePath') || '',
   KEY_FILE_PATH: core.getInput('keyFilePath') || '',
   CERT_FILE_PATH: core.getInput('certFilePath') || '',
-  DB_PROXY_CONNECTION_STRING: core.getInput('dbProxyConnectionString') || ''
+  DB_PROXY_CONNECTION_STRING: core.getInput('dbProxyConnectionString') || '',
+  DB_HOST: core.getInput('dbHost') || '',
+  DB_PORT: core.getInput('dbPort') || '',
+  DB_USER: core.getInput('dbUser') || ''
 })
 
 export const validateParameters = (params: Parameters): void => {
@@ -152,6 +155,9 @@ export const getParameters = async (
           await createDatabase(
             connectionString,
             dbName,
+            parameters.DB_HOST,
+            parameters.DB_USER,
+            parameters.DB_PORT,
             caFilePath,
             keyFilePath,
             certFilePath
@@ -176,6 +182,9 @@ export const getParameters = async (
           await dropDatabase(
             connectionString,
             dbName,
+            parameters.DB_HOST,
+            parameters.DB_USER,
+            parameters.DB_PORT,
             caFilePath,
             keyFilePath,
             certFilePath
