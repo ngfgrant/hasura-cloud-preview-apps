@@ -1,3 +1,4 @@
+import fs from 'fs'
 import {Client} from 'pg'
 import {PGClient} from './types'
 
@@ -103,6 +104,10 @@ export const replaceDbNameInConnectionString = (
   return urlObj.toString()
 }
 
+const ca = process.env['PGSSLROOTCERT'] || ''
+const key = process.env['PGSSLKEY'] || ''
+const cert = process.env['PGSSLCERT'] || ''
+
 export const createDatabase = async (
   connectionString: string,
   dbName: string
@@ -111,7 +116,10 @@ export const createDatabase = async (
     ? {
         connectionString: stripSSLParameter(connectionString),
         ssl: {
-          rejectUnauthorized: false
+          rejectUnauthorized: false,
+          ...(ca !== '' && {ca: fs.readFileSync(ca).toString()}),
+          ...(key !== '' && {key: fs.readFileSync(key).toString()}),
+          ...(cert !== '' && {cert: fs.readFileSync(cert).toString()})
         }
       }
     : {connectionString}

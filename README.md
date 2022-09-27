@@ -58,13 +58,12 @@ jobs:
       - uses: actions/checkout@v2
       - uses: hasura/hasura-cloud-preview-apps@v0.1.7
         with:
-          name: "project-name-pr-${{github.event.number}}" # name of the preview app to deleted
+          name: 'project-name-pr-${{github.event.number}}' # name of the preview app to deleted
           delete: true
         env:
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}} # ${{ secrets.GITHUB_TOKEN }} is provided by default by GitHub actions
           HASURA_CLOUD_ACCESS_TOKEN: ${{secrets.HASURA_CLOUD_ACCESS_TOKEN}} # Hasura Cloud access token to contact Hasura Cloud APIs
 ```
-
 
 ## Input
 
@@ -77,27 +76,88 @@ jobs:
 - **tier**: (optional, default: "cloud_free") The tier of the the preview app. Use `cloud_free` for free tier and `cloud_payg` for Standard tier. A valid payment method is required at https://cloud.hasura.io/billing for creating Standard tier projects.
 
 - **hasuraEnv**: (optional, default: "") The environment variables that you want to set for the Hasura Cloud preview app. These must be `KEY=value` pairs with each env var on a new line. For example:
-	```yaml
-	hasuraEnv: | # env vars exposed to the Hasura instance
+
+  ```yaml
+  hasuraEnv: | # env vars exposed to the Hasura instance
   	 HASURA_GRAPHQL_CORS_DOMAINS=http://my-site.com
   	 ENV_VAR_1=value1
      ENV_VAR_2=value2
-	```
+  ```
 
 - **delete**: (optional, default: false) This must only be used in jobs where you want to delete the preview apps with the name given in the `name` field. Refer to the above sample usage for deleting preview apps on preview app closure/merger.
 
 - **postgresDBConfig**: This input accepts the connection URI of a postgres server and a comma-separated list of environment variables for the preview app that expect Postgres connection URIs. Given a Postgres server and a set of env vars, this action can create temporary databases in the postgres server and pass their connection strings to the given environment variables so that migrations can be applied on these freshly created databases. The format is as follows:
+
   ```yaml
   postgresDBConfig: | # postgres DB config for creating temporary databases
     POSTGRES_SERVER_CONNECTION_URI=${{secrets.PG_STRING}}
     PG_ENV_VARS_FOR_HASURA=PG_DB_URL_1,PG_DB_URL_2
   ```
+
   This action constructs the database name from the provided preview app, followed by making `DROP DATABASE IF EXISTS` and `CREATE DATABASE` queries with the given credentials in the POSTGRES_SERVER_CONNECTION_URI.
 
   Please make sure that this db config is also present in the deletion workflow so that this action also deletes the temporarily created databases when the PR is closed.
 
-  **Using Postgres in SSL mode**: To connect to Postgres in SSL mode, add the query parameter `sslmode=require` to your connection URI. Eg: `postgres://postgres:postgres@pgserver:25060/defaultdb?sslmode=require`
+## SSL
 
+**Using Postgres in SSL mode**: To connect to Postgres in SSL mode, add the query parameter `sslmode=require` to your connection URI. Eg: `postgres://postgres:postgres@pgserver:25060/defaultdb?sslmode=require`
+
+You will need to set the path to your SSL key and certificates in the GitHub Action environment. You should store these as GitHub Secrets and remove the files every time.
+
+Don't specify the SSL Key and Certificates in your connection string. I.e.
+
+```
+# Don't set your POSTGRES_DB_URI in GitHub Secrets to this
+
+postgresql://myuser:password@my-host-ip:5432/postgres?sslkey=client-key.pem&sslcert=client-cert.pem&sslrootcert=server-ca.pem&sslmode=require
+
+# Instead set this
+
+postgresql://myuser:password@my-host-ip:5432/postgres?sslmode=require
+```
+
+The reason for this is that the library used to establish Postgres connection will overwrite some SSL configuration if it is set in the connection string. See: https://node-postgres.com/features/ssl
+
+Here is an example of a GitHub Workflow that creates the relevant files and sets the path
+
+```
+      ...
+      - run: 'echo "$SSL_CLIENT_CERT" > ${{ github.workspace }}/client-cert.pem' && 'echo "$SSL_CLIENT_KEY" > ${{ github.workspace }}/client-key.pem' && 'echo "$SSL_SERVER_CA" > ${{ github.workspace }}/server-ca.pem'
+        shell: bash
+        env:
+          SSL_CLIENT_CERT: ${{secrets.SSL_CLIENT_CERT}}
+          SSL_CLIENT_KEY: ${{secrets.SSL_CLIENT_KEY}}
+          SSL_SERVER_CA: ${{secrets.SSL_SERVER_CA}}
+      - run: chmod 600 ${{ github.workspace }}/client-cert.pem ${{ github.workspace }}/client-key.pem ${{ github.workspace }}/server-ca.pem
+      ...
+      - uses: hasura-cloud-preview-apps/hasura-cloud-preview-apps@8537169fa31a506799a7b14e54dca787a8d569c0
+        with:
+          name: "preview-myapp-${{github.GITHUB_HEAD_REF}}${{github.event.number}}"
+          hasuraProjectDirectoryPath: /hasura
+          region: us-west-1
+          tier: cloud_free
+          postgresDBConfig: |
+            POSTGRES_SERVER_CONNECTION_URI=${{secrets.POSTGRES_SERVER_CONNECTION_URI}}
+            PG_ENV_VARS_FOR_HASURA=PG_DATABASE_URL
+          dbProxyConnectionHost: ${{secrets.PROXY_POSTGRES_HOST}}
+          hasuraEnv: |
+            ...
+            PG_DATABASE_URL=${{secrets.POSTGRES_SERVER_CONNECTION_URI}}
+            DB_SSL_CLIENT_KEY=${{secrets.DB_SSL_CLIENT_KEY}}
+            DB_SSL_CLIENT_CERT=${{secrets.DB_SSL_CLIENT_CERT}}
+            DB_SSL_SERVER_CA=${{secrets.DB_SSL_SERVER_CA}}
+            ...
+        env:
+          ...
+          PGSSLROOTCERT: ${{ github.workspace }}/server-ca.pem
+          PGSSLCERT: ${{ github.workspace }}/client-cert.pem
+          PGSSLKEY: ${{ github.workspace }}/client-key.pem
+      - name: Remove Certs
+        if: always()
+        run: rm -f ${{ github.workspace }}/client-cert.pem ${{ github.workspace }}/client-key.pem ${{ github.workspace }}/server-ca.pem
+```
+
+If you don't set `PGSSL` environment variable then we won't attempt to use it in the connection.
 
 ## Env Vars
 

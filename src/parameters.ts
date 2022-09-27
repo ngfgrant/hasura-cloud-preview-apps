@@ -4,12 +4,14 @@ import {Logger} from './logger'
 import {
   createDatabase,
   replaceDbNameInConnectionString,
-  dropDatabase
+  dropDatabase,
+  stripSSLParameter
 } from './postgres'
 
 const GITHUB_REPOSITORY = process.env.GITHUB_REPOSITORY || ''
 const GITHUB_OWNER = GITHUB_REPOSITORY.split('/')[0]
 const GITHUB_REPO_NAME = GITHUB_REPOSITORY.split('/')[1] || ''
+const matchHostRegex = new RegExp(/(?<=@)(.*?)(?=:)/)
 
 const getBranchName = () => {
   let branchName = process.env.GITHUB_HEAD_REF || ''
@@ -55,7 +57,8 @@ const getBaseParameters = () => ({
   GITHUB_OWNER,
   GITHUB_BRANCH_NAME,
   HASURA_ENV_VARS: getHasuraEnvVars(core.getInput('hasuraEnv')),
-  SHOULD_DELETE: [true, 'true'].includes(core.getInput('delete'))
+  SHOULD_DELETE: [true, 'true'].includes(core.getInput('delete')),
+  DB_PROXY_CONNECTION_HOST: core.getInput('dbProxyConnectionHost') || ''
 })
 
 export const validateParameters = (params: Parameters): void => {
@@ -133,17 +136,36 @@ export const getParameters = async (
     )
 
   if (postgresMetadata) {
+    // If we have the DB_PROXY_CONNECTION_HOST set, use that value for connectionHost,
+    // otherwise fallback to the pgString provided in the postgresMetadata
+
+    const pgDatabaseUrl =
+      parameters.HASURA_ENV_VARS.find(e => e.key === 'PG_DATABASE_URL') !==
+      undefined
+        ? parameters.HASURA_ENV_VARS['PG_DATABASE_URL']
+        : ''
+
+    const connectionHost =
+      parameters.DB_PROXY_CONNECTION_HOST !== ''
+        ? parameters.DB_PROXY_CONNECTION_HOST
+        : parsePgMetatdataHost(pgDatabaseUrl)
+
+    const connectionString = pgDatabaseUrl.replace(
+      matchHostRegex,
+      connectionHost
+    )
+
     for (const env of postgresMetadata.envVars) {
       const dbName = parseSqlCompliantDbName(parameters.NAME)
       if (!parameters.SHOULD_DELETE) {
         try {
-          await createDatabase(postgresMetadata.pgString, dbName)
+          await createDatabase(connectionString, dbName)
           parameters.HASURA_ENV_VARS = [
             ...parameters.HASURA_ENV_VARS.filter(e => e.key !== env),
             {
               key: env,
               value: replaceDbNameInConnectionString(
-                postgresMetadata.pgString,
+                stripSSLParameter(pgDatabaseUrl),
                 dbName
               )
             }
@@ -158,7 +180,7 @@ export const getParameters = async (
         }
       } else {
         try {
-          await dropDatabase(postgresMetadata.pgString, dbName)
+          await dropDatabase(connectionString, dbName)
         } catch (e) {
           if (e instanceof Error) {
             throw new Error(
@@ -195,6 +217,20 @@ export const getParameters = async (
 
 function parseSqlCompliantDbName(name: string) {
   return name.replace(/[^A-Z0-9]/gi, '_')
+}
+
+function parsePgMetatdataHost(connectionString: string) {
+  const tmp = connectionString.match(matchHostRegex)
+  if (tmp == null || tmp.at(0) == null || tmp.at(0) === undefined) {
+    return ''
+  }
+
+  const m = tmp.at(0)
+  if (m == null) {
+    return ''
+  }
+
+  return m
 }
 
 export type Parameters = ReturnType<typeof getBaseParameters>

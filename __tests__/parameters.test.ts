@@ -17,7 +17,8 @@ const paramsBase: Parameters = {
   GITHUB_OWNER: 'wawhal',
   GITHUB_BRANCH_NAME: 'main',
   HASURA_ENV_VARS: [],
-  SHOULD_DELETE: false
+  SHOULD_DELETE: false,
+  DB_PROXY_CONNECTION_HOST: ''
 }
 
 test('parameters validation', () => {

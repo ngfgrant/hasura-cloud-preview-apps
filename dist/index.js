@@ -14170,6 +14170,7 @@ const postgres_1 = __nccwpck_require__(6297);
 const GITHUB_REPOSITORY = process.env.GITHUB_REPOSITORY || '';
 const GITHUB_OWNER = GITHUB_REPOSITORY.split('/')[0];
 const GITHUB_REPO_NAME = GITHUB_REPOSITORY.split('/')[1] || '';
+const matchHostRegex = new RegExp(/(?<=@)(.*?)(?=:)/);
 const getBranchName = () => {
     let branchName = process.env.GITHUB_HEAD_REF || '';
     if (!branchName) {
@@ -14212,7 +14213,8 @@ const getBaseParameters = () => ({
     GITHUB_OWNER,
     GITHUB_BRANCH_NAME,
     HASURA_ENV_VARS: exports.getHasuraEnvVars(core.getInput('hasuraEnv')),
-    SHOULD_DELETE: [true, 'true'].includes(core.getInput('delete'))
+    SHOULD_DELETE: [true, 'true'].includes(core.getInput('delete')),
+    DB_PROXY_CONNECTION_HOST: core.getInput('dbProxyConnectionHost') || ''
 });
 const validateParameters = (params) => {
     if (!params.NAME) {
@@ -14263,16 +14265,26 @@ const getParameters = (logger, parameters = getBaseParameters()) => __awaiter(vo
     if (pgDbEnvEntry)
         pgDbEnvEntry.value = postgres_1.replaceDbNameInConnectionString(pgDbEnvEntry.value, parseSqlCompliantDbName(parameters.NAME));
     if (postgresMetadata) {
+        // If we have the DB_PROXY_CONNECTION_HOST set, use that value for connectionHost,
+        // otherwise fallback to the pgString provided in the postgresMetadata
+        const pgDatabaseUrl = parameters.HASURA_ENV_VARS.find(e => e.key === 'PG_DATABASE_URL') !==
+            undefined
+            ? parameters.HASURA_ENV_VARS['PG_DATABASE_URL']
+            : '';
+        const connectionHost = parameters.DB_PROXY_CONNECTION_HOST !== ''
+            ? parameters.DB_PROXY_CONNECTION_HOST
+            : parsePgMetatdataHost(pgDatabaseUrl);
+        const connectionString = pgDatabaseUrl.replace(matchHostRegex, connectionHost);
         for (const env of postgresMetadata.envVars) {
             const dbName = parseSqlCompliantDbName(parameters.NAME);
             if (!parameters.SHOULD_DELETE) {
                 try {
-                    yield postgres_1.createDatabase(postgresMetadata.pgString, dbName);
+                    yield postgres_1.createDatabase(connectionString, dbName);
                     parameters.HASURA_ENV_VARS = [
                         ...parameters.HASURA_ENV_VARS.filter(e => e.key !== env),
                         {
                             key: env,
-                            value: postgres_1.replaceDbNameInConnectionString(postgresMetadata.pgString, dbName)
+                            value: postgres_1.replaceDbNameInConnectionString(postgres_1.stripSSLParameter(pgDatabaseUrl), dbName)
                         }
                     ];
                 }
@@ -14285,7 +14297,7 @@ const getParameters = (logger, parameters = getBaseParameters()) => __awaiter(vo
             }
             else {
                 try {
-                    yield postgres_1.dropDatabase(postgresMetadata.pgString, dbName);
+                    yield postgres_1.dropDatabase(connectionString, dbName);
                 }
                 catch (e) {
                     if (e instanceof Error) {
@@ -14309,6 +14321,17 @@ exports.getParameters = getParameters;
 function parseSqlCompliantDbName(name) {
     return name.replace(/[^A-Z0-9]/gi, '_');
 }
+function parsePgMetatdataHost(connectionString) {
+    const tmp = connectionString.match(matchHostRegex);
+    if (tmp == null || tmp.at(0) == null || tmp.at(0) === undefined) {
+        return '';
+    }
+    const m = tmp.at(0);
+    if (m == null) {
+        return '';
+    }
+    return m;
+}
 
 
 /***/ }),
@@ -14327,8 +14350,12 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.dropDatabase = exports.createDatabase = exports.replaceDbNameInConnectionString = exports.stripSSLParameter = exports.dropDB = exports.dropAndCreateDb = exports.revokeExistingConnections = exports.getPGVersion = void 0;
+const fs_1 = __importDefault(__nccwpck_require__(7147));
 const pg_1 = __nccwpck_require__(4194);
 const getPGVersion = (pgClient) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -14422,13 +14449,14 @@ const replaceDbNameInConnectionString = (baseString, dbName) => {
     return urlObj.toString();
 };
 exports.replaceDbNameInConnectionString = replaceDbNameInConnectionString;
+const ca = process.env['PGSSLROOTCERT'] || '';
+const key = process.env['PGSSLKEY'] || '';
+const cert = process.env['PGSSLCERT'] || '';
 const createDatabase = (connectionString, dbName) => __awaiter(void 0, void 0, void 0, function* () {
     const connectionParams = connectionString.includes('sslmode=require')
         ? {
             connectionString: exports.stripSSLParameter(connectionString),
-            ssl: {
-                rejectUnauthorized: false
-            }
+            ssl: Object.assign(Object.assign(Object.assign({ rejectUnauthorized: false }, (ca !== '' && { ca: fs_1.default.readFileSync(ca).toString() })), (key !== '' && { key: fs_1.default.readFileSync(key).toString() })), (cert !== '' && { cert: fs_1.default.readFileSync(cert).toString() }))
         }
         : { connectionString };
     const pgVersionClient = new pg_1.Client(connectionParams);
